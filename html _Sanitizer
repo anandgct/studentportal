@@ -1,0 +1,42 @@
+import org.owasp.html.HtmlPolicyBuilder;
+import org.owasp.html.PolicyFactory;
+import java.util.regex.Pattern;
+
+public class HtmlSanitizer {
+    public static String sanitizeHtml(String htmlContent) {
+        // Define a policy for CKEditor formatting features (excluding media)
+        PolicyFactory policy = new HtmlPolicyBuilder()
+            // Allow common HTML elements for text formatting
+            .allowElements(
+                "p", "h1", "h2", "h3", "h4", "h5", "h6", "div", "span", "strong", "em", "u", "s", "sub", "sup",
+                "ul", "ol", "li", "blockquote", "pre", "code", "br", "hr",
+                "table", "thead", "tbody", "tfoot", "tr", "td", "th", "caption",
+                "a", "section", "article"
+            )
+            // Allow attributes for links and formatting
+            .allowAttributes("href", "target", "title", "rel").onElements("a")
+            .allowAttributes("class", "id", "role", "aria-*").globally()
+            .allowAttributes("data-*").matching(Pattern.compile("^data-[a-zA-Z0-9-]+")).globally()
+            // Allow styles with CSS properties for text formatting
+            .allowAttributes("style")
+                .matching(Pattern.compile(
+                    "^(color|font-size|font-family|text-align|background-color|margin|padding|border|width|height|line-height|text-decoration|font-weight|font-style|display|float|clear):[^;]+(;\\s*(color|font-size|font-family|text-align|background-color|margin|padding|border|width|height|line-height|text-decoration|font-weight|font-style|display|float|clear):[^;]+)*$"))
+                .onElements("p", "div", "span", "h1", "h2", "h3", "h4", "h5", "h6", "table", "td", "th", "li", "blockquote", "pre")
+            // Restrict protocols for links
+            .allowUrlProtocols("http", "https", "mailto").forAttributes("href")
+            // Enable OWASP CSS sanitization for additional safety
+            .allowStyling()
+            // Disallow dangerous elements/attributes
+            .disallowElements("script", "object", "embed", "iframe", "img", "video", "audio", "source", "track")
+            .disallowAttributes("on*").globally()
+            .toFactory();
+
+        // Sanitize the HTML
+        String sanitized = policy.sanitize(htmlContent);
+        // Log differences for debugging
+        if (!htmlContent.equals(sanitized)) {
+            System.out.println("Sanitized diff: Original=" + htmlContent + ", Sanitized=" + sanitized);
+        }
+        return sanitized;
+    }
+}
