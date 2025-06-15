@@ -1,41 +1,136 @@
 import org.owasp.html.HtmlPolicyBuilder;
 import org.owasp.html.PolicyFactory;
+import org.owasp.html.AttributePolicy;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public class HtmlSanitizer {
+    // List of allowed CSS properties
+    private static final Set<String> ALLOWED_CSS_PROPERTIES = new HashSet<>(Arrays.asList(
+        "align-content", "align-items", "align-self", "all", "animation", "animation-delay", "animation-direction",
+        "animation-duration", "animation-fill-mode", "animation-iteration-count", "animation-name", "animation-play-state",
+        "animation-timing-function", "backface-visibility", "background", "background-attachment", "background-blend-mode",
+        "background-clip", "background-color", "background-image", "background-origin", "background-position",
+        "background-position-x", "background-position-y", "background-repeat", "background-repeat-x", "background-repeat-y",
+        "background-size", "border", "border-bottom", "border-bottom-color", "border-bottom-left-radius",
+        "border-bottom-right-radius", "border-bottom-style", "border-bottom-width", "border-collapse", "border-color",
+        "border-image", "border-image-outset", "border-image-repeat", "border-image-slice", "border-image-source",
+        "border-image-width", "border-left", "border-left-color", "border-left-style", "border-left-width", "border-radius",
+        "border-right", "border-right-color", "border-right-style", "border-right-width", "border-spacing", "border-style",
+        "border-top", "border-top-color", "border-top-left-radius", "border-top-right-radius", "border-top-style",
+        "border-top-width", "border-width", "bottom", "box-decoration-break", "box-shadow", "box-sizing", "break-after",
+        "break-before", "break-inside", "caption-side", "caret-color", "clear", "clip", "color", "column-count",
+        "column-fill", "column-gap", "column-rule", "column-rule-color", "column-rule-style", "column-rule-width",
+        "column-span", "column-width", "columns", "content", "counter-increment", "counter-reset", "cursor", "direction",
+        "display", "empty-cells", "filter", "flex", "flex-basis", "flex-direction", "flex-flow", "flex-grow", "flex-shrink",
+        "flex-wrap", "float", "font", "font-family", "font-feature-settings", "font-kerning", "font-language-override",
+        "font-size", "font-size-adjust", "font-stretch", "font-style", "font-synthesis", "font-variant",
+        "font-variant-alternates", "font-variant-caps", "font-variant-east-asian", "font-variant-ligatures",
+        "font-variant-numeric", "font-variant-position", "font-weight", "gap", "grid", "grid-area", "grid-auto-columns",
+        "grid-auto-flow", "grid-auto-rows", "grid-column", "grid-column-end", "grid-column-gap", "grid-column-start",
+        "grid-gap", "grid-row", "grid-row-end", "grid-row-gap", "grid-row-start", "grid-template", "grid-template-areas",
+        "grid-template-columns", "grid-template-rows", "hanging-punctuation", "height", "hyphens", "image-rendering",
+        "isolation", "justify-content", "left", "letter-spacing", "line-break", "line-height", "list-style",
+        "list-style-image", "list-style-position", "list-style-type", "margin", "margin-bottom", "margin-left",
+        "margin-right", "margin-top", "mask", "mask-clip", "mask-composite", "mask-image", "mask-mode", "mask-origin",
+        "mask-position", "mask-repeat", "mask-size", "mask-type", "max-height", "max-width", "min-height", "min-width",
+        "mix-blend-mode", "object-fit", "object-position", "opacity", "order", "orphans", "outline", "outline-color",
+        "outline-offset", "outline-style", "outline-width", "overflow", "overflow-wrap", "overflow-x", "overflow-y",
+        "padding", "padding-bottom", "padding-left", "padding-right", "padding-top", "page-break-after",
+        "page-break-before", "page-break-inside", "perspective", "perspective-origin", "pointer-events", "position",
+        "quotes", "resize", "right", "row-gap", "scroll-behavior", "tab-size", "table-layout", "text-align",
+        "text-align-last", "text-combine-upright", "text-decoration", "text-decoration-color", "text-decoration-line",
+        "text-decoration-skip", "text-decoration-style", "text-indent", "text-justify", "text-orientation",
+        "text-overflow", "text-shadow", "text-transform", "text-underline-position", "top", "transform",
+        "transform-origin", "transform-style", "transition", "transition-delay", "transition-duration",
+        "transition-property", "transition-timing-function", "unicode-bidi", "user-select", "vertical-align",
+        "visibility", "white-space", "widows", "width", "word-break", "word-spacing", "word-wrap", "writing-mode",
+        "z-index"
+    ));
+
+    // Custom AttributePolicy for style
+    private static final AttributePolicy STYLE_POLICY = (String attributeName, String value) -> {
+        if (!"style".equalsIgnoreCase(attributeName)) {
+            return null; // Not a style attribute
+        }
+        if (value == null || value.trim().isEmpty()) {
+            return value; // Allow empty style
+        }
+        // Split style into property-value pairs
+        String[] declarations = value.split(";");
+        for (String declaration : declarations) {
+            declaration = declaration.trim();
+            if (declaration.isEmpty()) {
+                continue;
+            }
+            // Extract property name (before first colon)
+            int colonIndex = declaration.indexOf(':');
+            if (colonIndex <= 0) {
+                return null; // Invalid declaration, reject style
+            }
+            String property = declaration.substring(0, colonIndex).trim().toLowerCase();
+            if (!ALLOWED_CSS_PROPERTIES.contains(property)) {
+                return null; // Disallow style if any property is not allowed
+            }
+        }
+        return value; // All properties are allowed
+    };
+
     public static String sanitizeHtml(String htmlContent) {
-        // Define a policy for CKEditor formatting features (excluding media)
+        // Define a policy for CKEditor formatting features with custom styles
         PolicyFactory policy = new HtmlPolicyBuilder()
-            // Allow common HTML elements for text formatting
+            // Allow specified HTML elements
             .allowElements(
-                "p", "h1", "h2", "h3", "h4", "h5", "h6", "div", "span", "strong", "em", "u", "s", "sub", "sup",
-                "ul", "ol", "li", "blockquote", "pre", "code", "br", "hr",
-                "table", "thead", "tbody", "tfoot", "tr", "td", "th", "caption",
-                "a", "section", "article"
+                "a", "abbr", "acronym", "address", "area", "article", "aside", "b", "bdi", "big", "blockquote", "body",
+                "br", "button", "caption", "center", "cite", "code", "col", "colgroup", "data", "datalist", "dd", "del",
+                "details", "dfn", "dir", "div", "dl", "dt", "em", "fieldset", "figcaption", "figure", "font", "footer",
+                "form", "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hr", "html", "i", "img", "input", "ins",
+                "kbd", "keygen", "label", "legend", "li", "main", "map", "mark", "menu", "menuitem", "meter", "nav", "ol",
+                "optgroup", "option", "output", "p", "pre", "progress", "q", "rp", "rt", "ruby", "s", "samp", "section",
+                "select", "small", "span", "strike", "strong", "sub", "summary", "sup", "table", "tbody", "td", "textarea",
+                "tfoot", "th", "thead", "time", "tr", "tt", "u", "ul", "var", "wbr"
             )
-            // Allow attributes for links and formatting
-            .allowAttributes("href", "target", "title", "rel").onElements("a")
-            .allowAttributes("class", "id", "role", "aria-*").globally()
+            // Allow specified attributes
+            .allowAttributes(
+                "abbr", "accept-charset", "accept", "accesskey", "action", "align", "alt", "autocomplete", "autosave",
+                "axis", "bgcolor", "border", "cellpadding", "cellspacing", "challenge", "char", "charoff", "charset",
+                "checked", "cite", "clear", "color", "cols", "colspan", "compact", "contenteditable", "coords", "datetime",
+                "dir", "disabled", "draggable", "dropzone", "enctype", "for", "frame", "headers", "height", "high", "href",
+                "hreflang", "hspace", "ismap", "keytype", "label", "lang", "list", "longdesc", "low", "max", "maxlength",
+                "media", "method", "min", "multiple", "name", "nohref", "noshade", "novalidate", "nowrap", "open",
+                "optimum", "pattern", "placeholder", "prompt", "pubdate", "radiogroup", "readonly", "rel", "required",
+                "rev", "reversed", "rows", "rowspan", "rules", "scope", "selected", "shape", "size", "span", "spellcheck",
+                "src", "start", "step", "style", "summary", "tabindex", "target", "title", "type", "usemap", "valign",
+                "value", "vspace", "width", "wrap"
+            ).globally()
+            // Allow wildcard attributes
+            .allowAttributes("aria-*").matching(Pattern.compile("^aria-[a-zA-Z0-9-]+")).globally()
             .allowAttributes("data-*").matching(Pattern.compile("^data-[a-zA-Z0-9-]+")).globally()
-            // Allow styles with CSS properties for text formatting
+            // Allow style attribute with custom policy
             .allowAttributes("style")
-                .matching(Pattern.compile(
-                    "^(color|font-size|font-family|text-align|background-color|margin|padding|border|width|height|line-height|text-decoration|font-weight|font-style|display|float|clear):[^;]+(;\\s*(color|font-size|font-family|text-align|background-color|margin|padding|border|width|height|line-height|text-decoration|font-weight|font-style|display|float|clear):[^;]+)*$"))
-                .onElements("p", "div", "span", "h1", "h2", "h3", "h4", "h5", "h6", "table", "td", "th", "li", "blockquote", "pre")
+                .withPolicy(STYLE_POLICY)
+                .onElements(
+                    "p", "div", "span", "h1", "h2", "h3", "h4", "h5", "h6", "table", "td", "th", "li", "blockquote",
+                    "pre", "mark", "a", "abbr", "acronym", "address", "article", "aside", "b", "bdi", "big", "center",
+                    "cite", "code", "del", "details", "dfn", "font", "i", "ins", "kbd", "s", "samp", "small", "strike",
+                    "strong", "sub", "sup", "tt", "u", "var"
+                )
             // Restrict protocols for links
             .allowUrlProtocols("http", "https", "mailto").forAttributes("href")
             // Enable OWASP CSS sanitization for additional safety
             .allowStyling()
             // Disallow dangerous elements/attributes
-            .disallowElements("script", "object", "embed", "iframe", "img", "video", "audio", "source", "track")
+            .disallowElements("script", "object", "embed", "iframe")
             .disallowAttributes("on*").globally()
             .toFactory();
 
         // Sanitize the HTML
         String sanitized = policy.sanitize(htmlContent);
-        // Log differences for debugging
+        // Enhanced logging for debugging
         if (!htmlContent.equals(sanitized)) {
-            System.out.println("Sanitized diff: Original=" + htmlContent + ", Sanitized=" + sanitized);
+            System.out.println("Sanitized diff: Original=[" + htmlContent.replace("\n", "\\n") + "], Sanitized=[" + sanitized.replace("\n", "\\n") + "]");
         }
         return sanitized;
     }
