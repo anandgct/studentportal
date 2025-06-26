@@ -1,4 +1,4 @@
-spring.cloud.azure.keyvault.secret.property-sources-enabled=true
+curl 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net&client_id=56rqs994-0o66-4303-9roo-8e3534d0cb23' -H Metadata:truespring.cloud.azure.keyvault.secret.property-sources-enabled=true
 spring.cloud.azure.keyvault.secret.property-sources[0].endpoint=https://contosokv.vault.azure.net/
 spring.cloud.azure.credential.client-id=56rqs994-0o66-4303-9roo-8e3534d0cb23
 spring.cloud.azure.credential.tenant-id=72s988os-86s1-41ns-91ab-2q7pq011qo47
