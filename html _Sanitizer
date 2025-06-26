@@ -1,4 +1,7 @@
-spring.cloud.azure.keyvault.secret.property-source-enabled=true
-spring.cloud.azure.keyvault.secret.property-sources[0].endpoint=https://<your-keyvault-name>.vault.azure.net/
-spring.cloud.azure.keyvault.secret.property-sources[0].credential.managed-identity-enabled=true
-spring.cloud.azure.keyvault.secret.property-sources[0].credential.client-id=<user-assigned-managed-identity-client-id>
+spring.cloud.azure.keyvault.secret.property-sources-enabled=true
+spring.cloud.azure.keyvault.secret.property-sources[0].endpoint=https://contosokv.vault.azure.net/
+spring.cloud.azure.credential.client-id=56rqs994-0o66-4303-9roo-8e3534d0cb23
+spring.cloud.azure.credential.tenant-id=72s988os-86s1-41ns-91ab-2q7pq011qo47
+spring.cloud.azure.credential.managed-identity-enabled=true
+spring.cloud.azure.retry.mode=exponential
+spring.cloud.azure.retry.exponential.max-retries=3
