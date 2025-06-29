@@ -1,7 +1,117 @@
-curl 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net&client_id=56rqs994-0o66-4303-9roo-8e3534d0cb23' -H Metadata:truespring.cloud.azure.keyvault.secret.property-sources-enabled=true
-spring.cloud.azure.keyvault.secret.property-sources[0].endpoint=https://contosokv.vault.azure.net/
-spring.cloud.azure.credential.client-id=56rqs994-0o66-4303-9roo-8e3534d0cb23
-spring.cloud.azure.credential.tenant-id=72s988os-86s1-41ns-91ab-2q7pq011qo47
-spring.cloud.azure.credential.managed-identity-enabled=true
-spring.cloud.azure.retry.mode=exponential
-spring.cloud.azure.retry.exponential.max-retries=3
+import com.microsoft.applicationinsights.TelemetryClient;
+import com.microsoft.applicationinsights.attach.ApplicationInsights;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@SpringBootApplication
+public class YourApplication {
+    private static final Logger logger = LoggerFactory.getLogger(YourApplication.class);
+
+    @Value("${APPLICATIONINSIGHTS_CONNECTION_STRING:}")
+    private String connectionString;
+
+    public static void main(String[] args) {
+        // Log connection string for verification
+        logger.info("Application Insights Connection String: {}", connectionString);
+        if (connectionString == null || connectionString.isEmpty()) {
+            logger.error("Connection string is null or empty, skipping Application Insights initialization");
+        } else {
+            // Initialize Application Insights
+            ApplicationInsights.attach(connectionString);
+
+            // Create TelemetryClient
+            TelemetryClient telemetryClient = new TelemetryClient();
+            telemetryClient.getContext().setConnectionString(connectionString);
+
+            // Post telemetry data
+            try {
+                // Trace (similar to a log)
+                telemetryClient.trackTrace("Main class trace message");
+
+                // Event
+                telemetryClient.trackEvent("MainClassStarted", null, null);
+
+                // Metric
+                telemetryClient.trackMetric("MainClassMetric", 42.0);
+
+                // Exception
+                try {
+                    throw new RuntimeException("Test exception from main class");
+                } catch (Exception e) {
+                    telemetryClient.trackException(e);
+                }
+
+                // Flush to ensure telemetry is sent
+                telemetryClient.flush();
+
+                logger.info("Telemetry data sent to Application Insights");
+            } catch (Exception e) {
+                logger.error("Failed to send telemetry", e);
+            }
+        }
+
+        // Start Spring Boot application
+        SpringApplication.run(YourApplication.class, args);
+    }
+}import com.microsoft.applicationinsights.TelemetryClient;
+import com.microsoft.applicationinsights.attach.ApplicationInsights;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@SpringBootApplication
+public class YourApplication {
+    private static final Logger logger = LoggerFactory.getLogger(YourApplication.class);
+
+    @Value("${APPLICATIONINSIGHTS_CONNECTION_STRING:}")
+    private String connectionString;
+
+    public static void main(String[] args) {
+        // Log connection string for verification
+        logger.info("Application Insights Connection String: {}", connectionString);
+        if (connectionString == null || connectionString.isEmpty()) {
+            logger.error("Connection string is null or empty, skipping Application Insights initialization");
+        } else {
+            // Initialize Application Insights
+            ApplicationInsights.attach(connectionString);
+
+            // Create TelemetryClient
+            TelemetryClient telemetryClient = new TelemetryClient();
+            telemetryClient.getContext().setConnectionString(connectionString);
+
+            // Post telemetry data
+            try {
+                // Trace (similar to a log)
+                telemetryClient.trackTrace("Main class trace message");
+
+                // Event
+                telemetryClient.trackEvent("MainClassStarted", null, null);
+
+                // Metric
+                telemetryClient.trackMetric("MainClassMetric", 42.0);
+
+                // Exception
+                try {
+                    throw new RuntimeException("Test exception from main class");
+                } catch (Exception e) {
+                    telemetryClient.trackException(e);
+                }
+
+                // Flush to ensure telemetry is sent
+                telemetryClient.flush();
+
+                logger.info("Telemetry data sent to Application Insights");
+            } catch (Exception e) {
+                logger.error("Failed to send telemetry", e);
+            }
+        }
+
+        // Start Spring Boot application
+        SpringApplication.run(YourApplication.class, args);
+    }
+}
