@@ -1,23 +1,6 @@
-azure.application-insights.instrumentation-key=${your-keyvault-secret-name<dependency>
-    <groupId>com.azure</groupId>
-    <artifactId>azure-monitor-opentelemetry-exporter</artifactId>
-    <version>1.0.0-beta.11</version>
-</dependency>@Bean
-public OpenTelemetry openTelemetry() {
-    String connectionString = "InstrumentationKey=...";
-    
-    AzureMonitorExporter exporter = AzureMonitorExporter.builder()
-        .connectionString(connectionString)
-        .build();
-    
-    return OpenTelemetrySdk.builder()
-        .setTracerProvider(
-            SdkTracerProvider.builder()
-                .addSpanProcessor(BatchSpanProcessor.builder(exporter).build())
-                .build())
-        .setLoggerProvider(
-            SdkLoggerProvider.builder()
-                .addLogRecordProcessor(BatchLogRecordProcessor.builder(exporter).build())
-                .build())
-        .buildAndRegisterGlobal();
-}
+<!-- Azure Functions Durable extension -->
+<dependency>
+    <groupId>com.microsoft.azure.functions</groupId>
+    <artifactId>azure-functions-java-durable</artifactId>
+    <version>2.9.0</version>
+</dependency>
