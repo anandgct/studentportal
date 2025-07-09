@@ -1,6 +1,6 @@
-<!-- Azure Functions Durable extension -->
+<!-- https://mvnrepository.com/artifact/com.microsoft/durabletask-azure-functions -->
 <dependency>
-    <groupId>com.microsoft.azure.functions</groupId>
-    <artifactId>azure-functions-java-durable</artifactId>
-    <version>2.9.0</version>
+    <groupId>com.microsoft</groupId>
+    <artifactId>durabletask-azure-functions</artifactId>
+    <version>1.4.0</version>
 </dependency>
