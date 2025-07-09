@@ -1,6 +1,58 @@
-<!-- https://mvnrepository.com/artifact/com.microsoft/durabletask-azure-functions -->
-<dependency>
-    <groupId>com.microsoft</groupId>
-    <artifactId>durabletask-azure-functions</artifactId>
-    <version>1.4.0</version>
-</dependency>
+@FunctionName("NotificationWorkflowStarter")
+public void startNotificationWorkflow(
+    @ServiceBusQueueTrigger(name = "message",
+                            queueName = "%QueueNameNotificationFromFOSX%",
+                            connection = "AzureWebJobsServiceBus")
+    String message,
+    @DurableClientInput(name = "starter") DurableClientContext starter,
+    final ExecutionContext context
+) {
+    context.getLogger().info("Starting orchestration for message: " + message);
+    starter.getClient().scheduleNewOrchestrationInstance("NotificationWorkflowOrchestrator", message);
+}
+
+@FunctionName("NotificationWorkflowOrchestrator")
+public void orchestrateNotificationWorkflow(
+    @DurableOrchestrationTrigger DurableOrchestrationContext ctx
+) {
+    String message = ctx.getInput(String.class);
+    Logger logger = ctx.getLogger();
+
+    logger.info("Orchestrator started for message: " + message);
+
+    // 1️⃣ Wait 30 minutes
+    ctx.createTimer(ctx.getCurrentUtcDateTime().plusMinutes(30));
+
+    // 2️⃣ Check if current time is within allowed window
+    LocalTime nowUtc = ctx.getCurrentUtcDateTime().toLocalTime();
+    LocalTime startTime = LocalTime.of(6, 15); // 06:15 AM UTC
+    LocalTime endTime = LocalTime.of(23, 0);   // 11:00 PM UTC
+
+    if (nowUtc.isBefore(startTime)) {
+        // Wait until 6:15 AM today
+        OffsetDateTime nextStart = ctx.getCurrentUtcDateTime()
+                                      .withHour(6).withMinute(15).withSecond(0).withNano(0);
+        logger.info("Current time is before 6:15 AM, waiting until: " + nextStart);
+        ctx.createTimer(nextStart);
+    } else if (nowUtc.isAfter(endTime)) {
+        // Wait until 6:15 AM next day
+        OffsetDateTime nextStart = ctx.getCurrentUtcDateTime().plusDays(1)
+                                      .withHour(6).withMinute(15).withSecond(0).withNano(0);
+        logger.info("Current time is after 11:00 PM, waiting until next day: " + nextStart);
+        ctx.createTimer(nextStart);
+    }
+
+    // 3️⃣ Call Activity to process message
+    ctx.callActivity("ProcessNotificationActivity", message);
+}
+@FunctionName("ProcessNotificationActivity")
+public void processNotification(
+    @DurableActivityTrigger String message,
+    final ExecutionContext context
+) {
+    Logger logger = context.getLogger();
+    logger.info("Processing message: " + message);
+
+    // Your business logic here
+    // For example: send to another Service Bus queue
+}
