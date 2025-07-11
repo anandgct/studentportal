@@ -5,9 +5,9 @@ import java.time.format.DateTimeFormatter;
 
 public class DeferredTimeCalculator {
 
-    // Static final cutoff times directly from strings
-    private static final LocalTime MORNING_CUTOFF = parseCutoffTime(System.getenv("A"));//"06:30"
-    private static final LocalTime EVENING_CUTOFF = parseCutoffTime(System.getenv("B"));//"21:45"
+    // Static final cutoff times (can load from env or hardcoded for now)
+    private static final LocalTime MORNING_CUTOFF = parseCutoffTime(System.getenv().getOrDefault("A", "06:00")); // "06:00"
+    private static final LocalTime EVENING_CUTOFF = parseCutoffTime(System.getenv().getOrDefault("B", "21:45")); // "21:45"
 
     /**
      * Parses a cutoff time string in "HH:mm" format into LocalTime.
@@ -28,38 +28,41 @@ public class DeferredTimeCalculator {
     public static LocalDateTime calculateDeferredTime(ZonedDateTime arrivalTimeUTC) {
         LocalTime arrivalTimeOnly = arrivalTimeUTC.toLocalTime();
 
-        // Case 1: Between MORNING_CUTOFF and EVENING_CUTOFF
-        if (!arrivalTimeOnly.isBefore(MORNING_CUTOFF) && !arrivalTimeOnly.isAfter(EVENING_CUTOFF)) {
+        // Case 1: Between 06:00 and 21:44 ➝ Add 30 minutes
+        if (!arrivalTimeOnly.isBefore(MORNING_CUTOFF) && arrivalTimeOnly.isBefore(EVENING_CUTOFF)) {
             return arrivalTimeUTC.plusMinutes(30).toLocalDateTime();
         }
-        // Case 2: After EVENING_CUTOFF -> Next day MORNING_CUTOFF
-        else if (arrivalTimeOnly.isAfter(EVENING_CUTOFF)) {
-            return arrivalTimeUTC.plusDays(1)
-                    .withHour(MORNING_CUTOFF.getHour())
-                    .withMinute(MORNING_CUTOFF.getMinute())
-                    .withSecond(0)
-                    .withNano(0).toLocalDateTime();
-        }
-        // Case 3: Before MORNING_CUTOFF -> Same day MORNING_CUTOFF
-        else {
+
+        // Case 2: Between 00:00 and 05:59 ➝ Defer to same day 06:30
+        if (arrivalTimeOnly.isBefore(MORNING_CUTOFF)) {
             return arrivalTimeUTC
-                    .withHour(MORNING_CUTOFF.getHour())
-                    .withMinute(MORNING_CUTOFF.getMinute())
-                    .withSecond(0)
-                    .withNano(0).toLocalDateTime();
+                    .withHour(6).withMinute(30)
+                    .withSecond(0).withNano(0)
+                    .toLocalDateTime();
         }
+
+        // Case 3: Between 21:45 and 23:59 ➝ Defer to next day 06:30
+        return arrivalTimeUTC.plusDays(1)
+                .withHour(6).withMinute(30)
+                .withSecond(0).withNano(0)
+                .toLocalDateTime();
     }
 
     public static void main(String[] args) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss z");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss");
 
-        ZonedDateTime arrival1 = ZonedDateTime.of(2025, 7, 11, 6, 15, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime arrival2 = ZonedDateTime.of(2025, 7, 11, 21, 44, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime arrival3 = ZonedDateTime.of(2025, 7, 11, 3, 0, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime now=ZonedDateTime.now(ZoneOffset.UTC);
-        ZonedDateTime plusFourHours = now.plusHours(6);
-        System.out.println(plusFourHours);
-        System.out.println(calculateDeferredTime(plusFourHours));
+        ZonedDateTime test1 = ZonedDateTime.of(2025, 7, 11, 5, 59, 0, 0, ZoneOffset.UTC); // Before 06:00
+        ZonedDateTime test2 = ZonedDateTime.of(2025, 7, 11, 6, 0, 0, 0, ZoneOffset.UTC);  // Exactly 06:00
+        ZonedDateTime test3 = ZonedDateTime.of(2025, 7, 11, 10, 15, 0, 0, ZoneOffset.UTC); // During daytime
+        ZonedDateTime test4 = ZonedDateTime.of(2025, 7, 11, 21, 44, 0, 0, ZoneOffset.UTC); // Just before EVENING_CUTOFF
+        ZonedDateTime test5 = ZonedDateTime.of(2025, 7, 11, 21, 45, 0, 0, ZoneOffset.UTC); // At EVENING_CUTOFF
+        ZonedDateTime test6 = ZonedDateTime.of(2025, 7, 11, 23, 30, 0, 0, ZoneOffset.UTC); // Late night
 
+        System.out.println("Arrival: " + test1.format(formatter) + " ➝ Deferred: " + calculateDeferredTime(test1));
+        System.out.println("Arrival: " + test2.format(formatter) + " ➝ Deferred: " + calculateDeferredTime(test2));
+        System.out.println("Arrival: " + test3.format(formatter) + " ➝ Deferred: " + calculateDeferredTime(test3));
+        System.out.println("Arrival: " + test4.format(formatter) + " ➝ Deferred: " + calculateDeferredTime(test4));
+        System.out.println("Arrival: " + test5.format(formatter) + " ➝ Deferred: " + calculateDeferredTime(test5));
+        System.out.println("Arrival: " + test6.format(formatter) + " ➝ Deferred: " + calculateDeferredTime(test6));
     }
 }
