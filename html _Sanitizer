@@ -1,60 +1,15 @@
-package com.azure.demo;
-
-import java.time.*;
-import java.time.format.DateTimeFormatter;
-
-public class DeferredTimeCalculator {
-
-    // Static final cutoff times (can load from env or hardcoded for now)
-    private static final LocalTime MORNING_CUTOFF = parseCutoffTime(System.getenv().getOrDefault("A", "06:00")); // "06:00"
-    private static final LocalTime EVENING_CUTOFF = parseCutoffTime(System.getenv().getOrDefault("B", "21:45")); // "21:45"
-
-    /**
-     * Parses a cutoff time string in "HH:mm" format into LocalTime.
-     */
-    private static LocalTime parseCutoffTime(String timeStr) {
-        if (timeStr == null || !timeStr.matches("\\d{1,2}:\\d{2}")) {
-            throw new IllegalArgumentException("Invalid cutoff time format: " + timeStr);
-        }
-        String[] parts = timeStr.split(":");
-        int hour = Integer.parseInt(parts[0]);
-        int minute = Integer.parseInt(parts[1]);
-        return LocalTime.of(hour, minute);
-    }
-
-    /**
-     * Calculates the deferred time based on arrival time.
-     */
-    public static LocalDateTime calculateDeferredTime(ZonedDateTime arrivalTimeUTC) {
-        LocalTime arrivalTimeOnly = arrivalTimeUTC.toLocalTime();
-
-        // Case 1: Between 06:00 and 21:44 ➝ Add 30 minutes
-        if (arrivalTimeOnly.isAfter(MORNING_CUTOFF) && arrivalTimeOnly.isBefore(EVENING_CUTOFF)) {
-            return arrivalTimeUTC.plusMinutes(30).toLocalDateTime();
-        }
-
-        // Case 2: Between 00:00 and 05:59 ➝ Defer to same day 06:30
-        if (arrivalTimeOnly.isBefore(MORNING_CUTOFF)) {
-            return arrivalTimeUTC
-                    .withHour(6).withMinute(30)
-                    .withSecond(0).withNano(0)
-                    .toLocalDateTime();
-        }
-
-        // Case 3: Between 21:45 and 23:59 ➝ Defer to next day 06:30
-        return arrivalTimeUTC.plusDays(1)
-                .withHour(6).withMinute(30)
-                .withSecond(0).withNano(0)
-                .toLocalDateTime();
-    }
-
-    public static void main(String[] args) {
-      ZonedDateTime time =ZonedDateTime.now(ZoneOffset.UTC);
-      System.out.println(time);
-      ZonedDateTime plus=time.minusHours(15).plusMinutes(27);
-      System.out.println(plus);
-      System.out.println(calculateDeferredTime(plus));
-        
-
-    }
-}
+Steps:
+Step 1: Decode the description field from Base64 using UTF-8 to prevent character issues.
+Step 2: Sanitize the decoded text to remove malicious content, strip unsafe tags/scripts, and unescape HTML.
+Step 3: Save the cleaned payload to database table X with retries (1 min, 3 min, 3 min); notify the user via SMS, Call, or Email if all retries fail.
+Step 4: Send the payload to Azure Service Bus Queue using SPN authentication, applying the same retry and notification logic.
+Step 5: Respond to the UI with success if all steps pass, else return an error with notification details.
+Component
+Retry Attempts
+Action on Final Failure
+Database Call
+3
+Notify user (SMS/Call/Email)
+Service Bus Call
+3
+Notify user (SMS/Call/Email)
